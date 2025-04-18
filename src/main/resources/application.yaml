@@ -1,0 +1,64 @@
+#spring.application.name=movie-backend
+
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: "jdbc:mysql://localhost:3306/movies"
+    driverClassName: "com.mysql.cj.jdbc.Driver"
+    username: root
+    password: 123
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+
+  files:
+    video: videos/
+
+  file:
+    video:
+      hsl: videos_hsl/
+
+  jwt:
+    signerKey: ""
+    valid-duration: 86400 # in second
+    refreshable-duration: 36000 # in seconds
+
+  kafka:
+    bootstrap-servers: localhost:9094
+    consumer:
+      group-id: apartments-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+  outbound:
+    identity:
+      client-id: ""
+      client-secret: ""
+      redirect-uri: "http://localhost:3000/authenticate"
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username:
+    password:
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+
