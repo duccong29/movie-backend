@@ -29,7 +29,7 @@ spring:
       hsl: videos_hsl/
 
   jwt:
-    signerKey: "huVDmdfmV0UcHOvREnyywZdtALSjCfpeKGj+ig1ayuCFtenw9wex46hNiQHpO+rt"
+    signerKey: ""
     valid-duration: 86400 # in second
     refreshable-duration: 36000 # in seconds
 
@@ -55,8 +55,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: duccongsos@gmail.com
-    password: ofwc jrbf urip ufkx
+    username: 
+    password: 
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
