@@ -3,7 +3,9 @@ package movies.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,20 +20,26 @@ import java.util.Set;
 @NoArgsConstructor
 @Entity
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EntityListeners(AuditingEntityListener.class)
 public class Series {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
     String title;
-    String synopsis;
+    String description;
     String posterUrl;
     String country;
-    String language;
-    Double averageRating;
+
+    @Builder.Default
+    Double averageRating = 0.0;
 
     @ManyToMany
     Set<Genre> genres = new HashSet<>();
+
+//    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
+//    @Builder.Default
+//    List<Image> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Season> seasons = new ArrayList<>();
@@ -48,6 +56,24 @@ public class Series {
     @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Comment> comments = new ArrayList<>();
 
-    @CreationTimestamp
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
     LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    LocalDateTime updatedAt;
+
+    public void updateAverageRating() {
+        if (reviews.isEmpty()) {
+            this.averageRating = 0.0;
+            return;
+        }
+
+        double sum = reviews.stream()
+                .mapToDouble(Review::getRating)
+                .sum();
+
+        this.averageRating = sum / reviews.size();
+    }
 }

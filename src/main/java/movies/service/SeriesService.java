@@ -1,28 +1,27 @@
 package movies.service;
 
-import jakarta.annotation.security.PermitAll;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import movies.dto.request.SeriesRequest;
-import movies.dto.response.SeriesResponse;
+import movies.dto.request.series.SeriesRequest;
+import movies.dto.response.PageResponse;
+import movies.dto.response.series.SeriesResponse;
 import movies.entity.Genre;
 import movies.entity.Series;
 import movies.exception.AppException;
 import movies.exception.ErrorCodes;
 import movies.mapper.SeriesMapper;
-import movies.repository.GenreRepository;
 import movies.repository.SeriesRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+
 
 @Service
 @Slf4j
@@ -37,13 +36,16 @@ public class SeriesService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public SeriesResponse createSeries(SeriesRequest request) {
-        validateUniqueTitle(request.getTitle());
+        if (seriesRepository.existsByTitleIgnoreCase(request.getTitle())) {
+            throw new AppException(ErrorCodes.SERIES_EXISTED);
+        }
 
         Series series = seriesMapper.toSeries(request);
-        series.setAverageRating(0.0);
-        Set<Genre> genres = genreService.validateAndGetGenres(request.getGenreIds());
-        series.setGenres(genres);
-//        series.setSeasons(new ArrayList<>());
+
+        if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
+            Set<Genre> genres = genreService.validateAndGetGenres(request.getGenreIds());
+            series.setGenres(genres);
+        }
 
         Series savesSeries = seriesRepository.save(series);
 
@@ -52,19 +54,24 @@ public class SeriesService {
 
     @Transactional
     public SeriesResponse updateSeries(String seriesId, SeriesRequest request) {
-        Series existingSeries = seriesRepository.findById(seriesId)
+        Series series = seriesRepository.findById(seriesId)
                 .orElseThrow(() -> new AppException(ErrorCodes.SERIES_NOT_EXISTED));
 
-        if (!existingSeries.getTitle().equalsIgnoreCase(request.getTitle())) {
-            validateUniqueTitle(request.getTitle());
+        if (!series.getTitle().equalsIgnoreCase(request.getTitle())
+                && seriesRepository.existsByTitleIgnoreCase(request.getTitle())) {
+            throw new AppException(ErrorCodes.SERIES_EXISTED);
         }
 
-        Set<Genre> genres = genreService.validateAndGetGenres(request.getGenreIds());
-        existingSeries.setGenres(genres);
+        seriesMapper.updateSeries(request, series);
 
-        seriesMapper.updateSeries(request, existingSeries);
+        if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
+            Set<Genre> genres = genreService.validateAndGetGenres(request.getGenreIds());
+            series.setGenres(genres);
+        }
 
-        Series savesSeries =seriesRepository.save(existingSeries);
+
+
+        Series savesSeries = seriesRepository.save(series);
 
         return seriesMapper.toSeriesResponse(savesSeries);
     }
@@ -87,31 +94,73 @@ public class SeriesService {
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteSeries(String seriesId) {
         if (!seriesRepository.existsById(seriesId)) {
-            throw new AppException(ErrorCodes.SERIES_NOT_FOUND);
+            throw new AppException(ErrorCodes.SERIES_NOT_EXISTED);
         }
         seriesRepository.deleteById(seriesId);
     }
 
-    private void validateUniqueTitle(String title) {
-        if (seriesRepository.existsByTitleIgnoreCase(title)) {
-            throw new AppException(ErrorCodes.SERIES_ALREADY_EXISTS);
+    @Transactional(readOnly = true)
+    public PageResponse<SeriesResponse> searchSeries(String query, Pageable pageable) {
+        Page<Series> seriesPage = seriesRepository.search(query, pageable);
+
+        if (seriesPage == null || seriesPage.isEmpty()) {
+            throw new AppException(ErrorCodes.SERIES_NOT_FOUND_BY_QUERY);
         }
+        return PageResponse.<SeriesResponse>builder()
+                .currentPage(seriesPage.getNumber())
+                .totalPages(seriesPage.getTotalPages())
+                .pageSize(seriesPage.getSize())
+                .totalElements(seriesPage.getTotalElements())
+                .data(seriesPage.getContent().stream()
+                        .map(seriesMapper::toSeriesResponse)
+                        .toList())
+                .build();
     }
-//    private Set<Genre> validateAndGetGenres(Set<String> genreIds) {
-//        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(genreIds));
-//
-//        if (genres.size() != genreIds.size()) {
-//            Set<String> foundIds = genres.stream()
-//                    .map(Genre::getId)
-//                    .collect(Collectors.toSet());
-//
-//            Set<String> missingIds = genreIds.stream()
-//                    .filter(id -> !foundIds.contains(id))
-//                    .collect(Collectors.toSet());
-//
-//            throw new AppException(ErrorCodes.GENRES_NOT_FOUND);
+
+    @Transactional(readOnly = true)
+    public PageResponse<SeriesResponse> getSeriesByGenre(String genreId, Pageable pageable) {
+        Page<Series> seriesPage = seriesRepository.findByGenreId(genreId, pageable);
+
+        if (seriesPage.isEmpty()) {
+            throw new AppException(ErrorCodes.SERIES_NOT_FOUND_BY_GENRE);
+        }
+
+        return PageResponse.<SeriesResponse>builder()
+                .currentPage(seriesPage.getNumber())
+                .totalPages(seriesPage.getTotalPages())
+                .pageSize(seriesPage.getSize())
+                .totalElements(seriesPage.getTotalElements())
+                .data(seriesPage.getContent().stream()
+                        .map(seriesMapper::toSeriesResponse)
+                        .toList())
+                .build();
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<SeriesResponse> getTopRatedSeries() {
+        return seriesRepository.findTop10ByOrderByAverageRatingDesc()
+                .stream()
+                .map(seriesMapper::toSeriesResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SeriesResponse> getLatestSeries() {
+        return seriesRepository.findTop10ByOrderByCreatedAtDesc()
+                .stream()
+                .map(seriesMapper::toSeriesResponse)
+                .toList();
+    }
+
+//    public Set<Series> validateAndGetSeries(Set<String> seriesIds) {
+//        if (seriesIds == null || seriesIds.isEmpty()) {
+//            throw new AppException(ErrorCodes.SERIES_REQUIRED);
 //        }
-//
-//        return genres;
+//        Set<Series> series = new HashSet<>(seriesRepository.findAllById(seriesIds));
+//        if (series.size() != seriesIds.size()) {
+//            throw new AppException(ErrorCodes.SERIES_NOT_EXISTED);
+//        }
+//        return series;
 //    }
 }

@@ -1,8 +1,8 @@
 package movies.mapper;
 
-import movies.dto.request.GenreRequest;
-import movies.dto.response.GenreNamesResponse;
-import movies.dto.response.GenreResponse;
+import movies.dto.request.genre.GenreRequest;
+import movies.dto.response.genre.GenreNamesResponse;
+import movies.dto.response.genre.GenreResponse;
 import movies.entity.Genre;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;

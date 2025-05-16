@@ -26,8 +26,9 @@ public class SecurityConfig {
             "/users", "/users/forgot-password", "/users/reset-password",
             "/login", "/introspect", "/logout", "/refresh", "/outbound/authentication",};
     private final String[] MOVIES_ENDPOINTS = {
-            "/videos_hsl/**",  "/genre/**",  "/movie/**"  , "/season/**", "/series/**", "/episode/**"
+            "/confirm/**" , "/videos_hsl/**",  "/genre/**",  "/movie/**"  , "/season/**", "/series/**", "/episode/**"
     };
+
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
 
@@ -36,7 +37,8 @@ public class SecurityConfig {
         http.authorizeHttpRequests(request -> request
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, MOVIES_ENDPOINTS).permitAll()
-                .requestMatchers(HttpMethod.GET, "/videos_hsl/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/movie/videos_hsl/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/movie/videos_hsl/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/ws/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/ws/**").permitAll()
                 .anyRequest()

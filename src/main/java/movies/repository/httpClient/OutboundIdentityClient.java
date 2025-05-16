@@ -1,8 +1,8 @@
 package movies.repository.httpClient;
 
 import feign.QueryMap;
-import movies.dto.request.ExchangeTokenRequest;
-import movies.dto.response.ExchangeTokenResponse;
+import movies.dto.request.authen.ExchangeTokenRequest;
+import movies.dto.response.authen.ExchangeTokenResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,14 +1,16 @@
 package movies.controller;
 
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import movies.dto.request.EpisodeRequest;
+import movies.dto.request.episode.EpisodeRequest;
 import movies.dto.response.ApiResponse;
-import movies.dto.response.EpisodeResponse;
+import movies.dto.response.episode.EpisodeResponse;
 import movies.service.EpisodeService;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,7 +27,7 @@ public class EpisodeController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<EpisodeResponse> createEpisode(
             @ModelAttribute EpisodeRequest request,
-            @RequestPart("videoFile") MultipartFile videoFile) {
+            @Valid @RequestPart("videoFile") MultipartFile videoFile) {
 
         EpisodeResponse response = episodeService.createEpisode(request, videoFile);
         return ApiResponse.<EpisodeResponse>builder()
@@ -36,7 +38,7 @@ public class EpisodeController {
     @PutMapping(value = "/{episodeId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<EpisodeResponse> updateEpisode(
             @PathVariable("episodeId") String episodeId,
-            @ModelAttribute EpisodeRequest request,
+            @Valid @ModelAttribute EpisodeRequest request,
             @RequestPart("videoFile") MultipartFile videoFile) {
 
         EpisodeResponse response = episodeService.updateEpisode(episodeId, request, videoFile);
@@ -64,6 +66,13 @@ public class EpisodeController {
         episodeService.deleteEpisode(episodeId);
         return ApiResponse.<String>builder()
                 .data("Episode has been deleted")
+                .build();
+    }
+
+    @GetMapping("/season/{seasonId}")
+    public ApiResponse<List<EpisodeResponse>> getEpisodesBySeason(@PathVariable String seasonId) {
+        return ApiResponse.<List<EpisodeResponse>>builder()
+                .data(episodeService.getEpisodesBySeasonId(seasonId))
                 .build();
     }
 }

@@ -1,13 +1,17 @@
 package movies.service;
 
+import event.dto.NotificationEvent;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import movies.constant.PredefinedRole;
+import movies.constant.PredefinedToken;
 import movies.dto.request.user.UserCreationRequest;
 import movies.dto.request.user.UserUpdateRequest;
+import movies.dto.response.user.ForgotPasswordResponse;
 import movies.dto.response.PageResponse;
+import movies.dto.request.user.ForgotPasswordRequest;
 import movies.dto.response.user.UserResponse;
 import movies.entity.Role;
 import movies.entity.User;
@@ -20,15 +24,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -40,6 +42,7 @@ public class UserService {
     PasswordEncoder passwordEncoder;
     RoleRepository roleRepository;
     AuthenticationService authenticationService;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @Transactional
     public UserResponse createUser(UserCreationRequest request) {
@@ -55,12 +58,14 @@ public class UserService {
         roleRepository.findByName(PredefinedRole.USER_ROLE).ifPresent(roles::add);
         user.setRoles(roles);
 
-//        publishRegistrationEvent(savedUser);
         try {
             userRepository.save(user);
         } catch (DataIntegrityViolationException exception) {
             throw new AppException(ErrorCodes.UNCATEGORIZED_EXCEPTION);
         }
+
+        sendTokenToUser(user, PredefinedToken.VERIFICATION_TOKEN, "CONFIRM_EMAIL");
+
         return userMapper.toUserResponse(user);
     }
 
@@ -106,12 +111,44 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        var user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCodes.EMAIL_NOT_EXISTED));
+
+        if (!user.isEnabled()) {
+            throw new AppException(ErrorCodes.EMAIL_NOT_CONFIRMED);
+        }
+
+        sendTokenToUser(user, PredefinedToken.PASSWORD_RESET_TOKEN, "FORGOT_PASSWORD");
+
+        return ForgotPasswordResponse.builder()
+                .status(true)
+                .message("Password reset email sent successfully.")
+                .build();
+    }
+
+    private void sendTokenToUser(User user, String tokenType, String subject) {
+        String token = authenticationService.generateEmailToken(user, tokenType);
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .channel("EMAIL")
+                .recipient(user.getEmail())
+                .subject(subject)
+                .body("Hello, " + user.getUsername())
+                .param(Map.of("token", token,
+                        "tokenType", tokenType))
+                .build();
+
+        kafkaTemplate.send("email-notifications", notificationEvent);
+    }
+
+
     private void validateUserRequest(UserCreationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException(ErrorCodes.EMAIL_ALREADY_EXISTS);
+            throw new AppException(ErrorCodes.EMAIL_EXISTED);
         }
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException(ErrorCodes.USERNAME_ALREADY_EXISTS);
+            throw new AppException(ErrorCodes.USER_EXISTED);
         }
     }
 
@@ -123,15 +160,4 @@ public class UserService {
         });
     }
 
-
-    /**
-     * Phát sự kiện đăng ký thành công
-     */
-//    private void publishRegistrationEvent(User user) {
-//        eventPublisher.publishEvent(new UserRegisteredEvent(
-//                user.getId(),
-//                user.getEmail(),
-//                LocalDateTime.now()
-//        ));
-//    }
 }

@@ -1,12 +1,10 @@
 package movies.mapper;
 
-import movies.dto.response.VideoPathResponse;
-import movies.dto.response.VideoResponse;
+import movies.dto.response.video.VideoPathResponse;
+import movies.dto.response.video.VideoResponse;
 import movies.entity.Video;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface VideoMapper {

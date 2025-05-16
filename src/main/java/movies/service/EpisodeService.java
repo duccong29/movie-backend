@@ -4,9 +4,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import movies.dto.request.EpisodeRequest;
-import movies.dto.request.VideoRequest;
-import movies.dto.response.EpisodeResponse;
+import movies.dto.request.episode.EpisodeRequest;
+import movies.dto.request.video.VideoRequest;
+import movies.dto.response.episode.EpisodeResponse;
 import movies.entity.Episode;
 import movies.entity.Season;
 import movies.exception.AppException;
@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -35,14 +36,23 @@ public class EpisodeService {
     @PreAuthorize("hasRole('ADMIN')")
     public EpisodeResponse createEpisode(EpisodeRequest request, MultipartFile videoFile) {
         Season season = seasonRepository.findById(request.getSeasonId())
-                .orElseThrow(() -> new AppException(ErrorCodes.SEASON_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCodes.SEASON_NOT_EXISTED));
 
+        if (episodeRepository.findBySeasonIdAndEpisodeNumber(season.getId(), request.getEpisodeNumber()).isPresent()) {
+            log.warn("Episode already exists with title: {} in season: {}", request.getTitle(), request.getSeasonId());
+            throw new AppException(ErrorCodes.EPISODE_EXISTED);
+        }
         Episode episode = episodeMapper.toEpisode(request);
         episode.setSeason(season);
 
         Episode savedEpisode = episodeRepository.save(episode);
 
-        uploadEpisodeVideoIfPresent(savedEpisode.getId(), videoFile);
+        try {
+            uploadEpisodeVideoIfPresent(savedEpisode.getId(), videoFile);
+        } catch (Exception e) {
+            log.error("Video upload failed for episode: {}", savedEpisode.getId(), e);
+            throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
+        }
 
         return episodeMapper.toEpisodeResponse(savedEpisode);
     }
@@ -51,19 +61,32 @@ public class EpisodeService {
     @PreAuthorize("hasRole('ADMIN')")
     public EpisodeResponse updateEpisode(String episodeId, EpisodeRequest request, MultipartFile videoFile) {
         Episode episode = episodeRepository.findById(episodeId)
-                .orElseThrow(() -> new AppException(ErrorCodes.EPISODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCodes.EPISODE_NOT_EXISTED));
 
+        if (!episode.getSeason().getId().equals(request.getSeasonId()) ||
+                !episode.getEpisodeNumber().equals(request.getEpisodeNumber())) {
+            episodeRepository.findBySeasonIdAndEpisodeNumber(request.getSeasonId(), request.getEpisodeNumber())
+                    .ifPresent(existingEpisode -> {
+                        if (!existingEpisode.getId().equals(episodeId)) {
+                            throw new AppException(ErrorCodes.EPISODE_EXISTED);
+                        }
+                    });
+
+            if (!episode.getSeason().getId().equals(request.getSeasonId())) {
+                Season season = seasonRepository.findById(request.getSeasonId())
+                        .orElseThrow(() -> new AppException(ErrorCodes.SEASON_NOT_EXISTED));
+                episode.setSeason(season);
+            }
+        }
         episodeMapper.updateEpisode(request, episode);
 
-        if (request.getSeasonId() != null) {
-            Season season = seasonRepository.findById(request.getSeasonId())
-                    .orElseThrow(() -> new AppException(ErrorCodes.SEASON_NOT_FOUND));
-            episode.setSeason(season);
-        }
-
         Episode savedEpisode = episodeRepository.save(episode);
-
-        uploadEpisodeVideoIfPresent(savedEpisode.getId(), videoFile);
+        try {
+            uploadEpisodeVideoIfPresent(savedEpisode.getId(), videoFile);
+        } catch (Exception e) {
+            log.error("Video upload failed during update for episode: {}", savedEpisode.getId(), e);
+            throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
+        }
 
         return episodeMapper.toEpisodeResponse(savedEpisode);
     }
@@ -80,7 +103,7 @@ public class EpisodeService {
     public EpisodeResponse getEpisodeById(String episodeId) {
         return episodeMapper.toEpisodeResponse(
                 episodeRepository.findById(episodeId)
-                        .orElseThrow(() -> new AppException(ErrorCodes.EPISODE_NOT_FOUND))
+                        .orElseThrow(() -> new AppException(ErrorCodes.EPISODE_NOT_EXISTED))
         );
     }
 
@@ -88,9 +111,21 @@ public class EpisodeService {
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteEpisode(String episodeId) {
         if (!episodeRepository.existsById(episodeId)) {
-            throw new AppException(ErrorCodes.EPISODE_NOT_FOUND);
+            throw new AppException(ErrorCodes.EPISODE_NOT_EXISTED);
         }
         episodeRepository.deleteById(episodeId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EpisodeResponse> getEpisodesBySeasonId(String seasonId) {
+        if (!seasonRepository.existsById(seasonId)) {
+            throw new AppException(ErrorCodes.SEASON_NOT_EXISTED);
+        }
+
+        List<Episode> episodes = episodeRepository.findBySeasonIdOrderByEpisodeNumber(seasonId);
+        return episodes.stream()
+                .map(episodeMapper::toEpisodeResponse)
+                .collect(Collectors.toList());
     }
 
     private void uploadEpisodeVideoIfPresent(String episodeId, MultipartFile videoFile) {
@@ -100,4 +135,5 @@ public class EpisodeService {
             videoService.save(videoRequest, videoFile);
         }
     }
+
 }

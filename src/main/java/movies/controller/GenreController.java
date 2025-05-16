@@ -1,12 +1,13 @@
 package movies.controller;
 
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import movies.dto.request.GenreRequest;
+import movies.dto.request.genre.GenreRequest;
 import movies.dto.response.ApiResponse;
-import movies.dto.response.GenreResponse;
+import movies.dto.response.genre.GenreResponse;
 import movies.service.GenreService;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +22,7 @@ public class GenreController {
     GenreService genreService;
 
     @PostMapping
-    ApiResponse<GenreResponse> createGenre(@RequestBody GenreRequest request) {
+    ApiResponse<GenreResponse> createGenre(@Valid @RequestBody GenreRequest request) {
         return ApiResponse.<GenreResponse>builder()
                 .data(genreService.createGenre(request))
                 .build();
@@ -30,7 +31,7 @@ public class GenreController {
     @PutMapping("/{genreId}")
     ApiResponse<GenreResponse> updateGenre(
             @PathVariable("genreId") String genreId,
-            @RequestBody GenreRequest request) {
+            @Valid @RequestBody GenreRequest request) {
         return ApiResponse.<GenreResponse>builder()
                 .data(genreService.updateGenre(genreId, request))
                 .build();

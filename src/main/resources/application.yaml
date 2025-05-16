@@ -28,23 +28,38 @@ spring:
     video:
       hsl: videos_hsl/
 
+  image:
+    upload:
+      dir: ./uploads/images
+    max-size: 5242880
+    allowed-formats: jpg,jpeg,png,webp
+
+  cloudinary:
+    cloud_name: "dgvylsy5z"
+    api_key: "635935476999317"
+    api_secret: "PX6X7nvRO7tQjA2i4FXbPYmkXgM"
+
   jwt:
-    signerKey: ""
+    signerKey: "huVDmdfmV0UcHOvREnyywZdtALSjCfpeKGj+ig1ayuCFtenw9wex46hNiQHpO+rt"
     valid-duration: 86400 # in second
     refreshable-duration: 36000 # in seconds
 
   kafka:
     bootstrap-servers: localhost:9094
     consumer:
-      group-id: apartments-group
+      group-id: movies
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
+        max.partition.fetch.bytes: 1073741824  # 1 GB
+        fetch.max.bytes: 1073741824         # 1 GB
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        max.request.size: 1073741824          # 1 GB
 
   outbound:
     identity:
@@ -55,10 +70,13 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username:
-    password:
+    username: duccongsos@gmail.com
+    password: ofwc jrbf urip ufkx
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
       mail.smtp.starttls.required: true
 
+  elasticsearch:
+    enabled: false
+    uris: http://localhost:9200

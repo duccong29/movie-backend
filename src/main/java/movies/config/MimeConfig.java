@@ -17,4 +17,5 @@ public class MimeConfig {
             factory.setMimeMappings(mappings);
         };
     }
+
 }

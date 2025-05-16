@@ -3,7 +3,7 @@ package movies.dto.response.user;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import movies.dto.response.RoleResponse;
+import movies.dto.response.role.RoleResponse;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -1,7 +1,7 @@
 package movies.mapper;
 
-import movies.dto.request.SeriesRequest;
-import movies.dto.response.SeriesResponse;
+import movies.dto.request.series.SeriesRequest;
+import movies.dto.response.series.SeriesResponse;
 import movies.entity.Series;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;

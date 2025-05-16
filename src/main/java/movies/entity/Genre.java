@@ -1,9 +1,14 @@
+
 package movies.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -15,6 +20,7 @@ import java.util.Set;
 @NoArgsConstructor
 @Entity
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EntityListeners(AuditingEntityListener.class)
 public class Genre {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -27,17 +33,11 @@ public class Genre {
     @ManyToMany(mappedBy = "genres")
     Set<Series> series = new HashSet<>();
 
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
     LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
     LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = null;
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

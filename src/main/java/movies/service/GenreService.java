@@ -4,8 +4,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import movies.dto.request.GenreRequest;
-import movies.dto.response.GenreResponse;
+import movies.dto.request.genre.GenreRequest;
+import movies.dto.response.genre.GenreResponse;
 import movies.entity.Genre;
 import movies.exception.AppException;
 import movies.exception.ErrorCodes;
@@ -31,8 +31,8 @@ public class GenreService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public GenreResponse createGenre(GenreRequest request) {
-        if (genreRepository.existsByName(request.getName())) {
-            throw new AppException(ErrorCodes.GENRE_ALREADY_EXISTS);
+        if (genreRepository.existsByNameIgnoreCase(request.getName())) {
+            throw new AppException(ErrorCodes.GENRE_EXISTED);
         }
         Genre genre = genreMapper.toGenre(request);
         Genre savedGenre = genreRepository.save(genre);
@@ -43,15 +43,16 @@ public class GenreService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public GenreResponse updateGenre(String genreId, GenreRequest request) {
-        Genre existingGenre = genreRepository.findById(genreId)
+        Genre genre = genreRepository.findById(genreId)
                 .orElseThrow(() -> new AppException(ErrorCodes.GENRE_NOT_EXISTED));
 
-        if (genreRepository.existsByName(request.getName())) {
-            throw new AppException(ErrorCodes.GENRE_ALREADY_EXISTS);
+        if (!genre.getName().equalsIgnoreCase(request.getName()) &&
+                genreRepository.existsByNameIgnoreCase(request.getName())) {
+            throw new AppException(ErrorCodes.GENRE_EXISTED);
         }
 
-        genreMapper.updateGenre(request, existingGenre);
-        Genre savedGenre = genreRepository.save(existingGenre);
+        genreMapper.updateGenre(request, genre);
+        Genre savedGenre = genreRepository.save(genre);
         log.info("Updated genre with id: {}", genreId);
         return genreMapper.toGenreResponse(savedGenre);
     }
@@ -81,20 +82,12 @@ public class GenreService {
     }
 
     public Set<Genre> validateAndGetGenres(Set<String> genreIds) {
-        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(genreIds));
-
-        if (genres.size() != genreIds.size()) {
-            Set<String> foundIds = genres.stream()
-                    .map(Genre::getId)
-                    .collect(Collectors.toSet());
-
-            Set<String> missingIds = genreIds.stream()
-                    .filter(id -> !foundIds.contains(id))
-                    .collect(Collectors.toSet());
-
-            throw new AppException(ErrorCodes.GENRES_NOT_FOUND);
+        if (genreIds == null || genreIds.isEmpty()) {
+            throw new AppException(ErrorCodes.GENRE_REQUIRED);
         }
-
-        return genres;
+        return genreIds.stream()
+                .map(id -> genreRepository.findById(id)
+                        .orElseThrow(() -> new  AppException(ErrorCodes.GENRE_NOT_EXISTED)))
+                .collect(Collectors.toSet());
     }
 }

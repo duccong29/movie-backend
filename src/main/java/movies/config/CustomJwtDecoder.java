@@ -2,7 +2,7 @@ package movies.config;
 
 
 import com.nimbusds.jose.JOSEException;
-import movies.dto.request.IntrospectRequest;
+import movies.dto.request.authen.IntrospectRequest;
 import movies.service.AuthenticationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

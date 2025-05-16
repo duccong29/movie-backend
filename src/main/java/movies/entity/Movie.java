@@ -3,6 +3,10 @@ package movies.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.Where;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,6 +22,7 @@ import java.util.Set;
 @NoArgsConstructor
 @Entity
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EntityListeners(AuditingEntityListener.class)
 public class Movie {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,14 +34,19 @@ public class Movie {
     LocalDate releaseDate;
     String posterUrl;
     String country;
-    String language;
-    Double averageRating;
+
+    @Builder.Default
+    Double averageRating = 0.0;
 
     @ManyToMany
     Set<Genre> genres = new HashSet<>();
 
+    @OneToOne(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    Video video;
+
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<Video> videos = new ArrayList<>();
+    @Builder.Default
+    List<Image> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Review> reviews = new ArrayList<>();
@@ -50,17 +60,24 @@ public class Movie {
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Comment> comments = new ArrayList<>();
 
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
     LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
     LocalDateTime updatedAt;
 
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = null;
-    }
+    public void updateAverageRating() {
+        if (reviews.isEmpty()) {
+            this.averageRating = 0.0;
+            return;
+        }
 
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        double sum = reviews.stream()
+                .mapToDouble(Review::getRating)
+                .sum();
+
+        this.averageRating = sum / reviews.size();
     }
 }

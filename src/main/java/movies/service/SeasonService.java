@@ -4,11 +4,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import movies.dto.request.SeasonRequest;
-import movies.dto.request.SeriesRequest;
-import movies.dto.response.SeasonResponse;
-import movies.dto.response.SeriesResponse;
-import movies.entity.Genre;
+import movies.dto.request.season.SeasonCreationRequest;
+import movies.dto.request.season.SeasonUpdateRequest;
+import movies.dto.response.season.SeasonResponse;
 import movies.entity.Season;
 import movies.entity.Series;
 import movies.exception.AppException;
@@ -21,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -30,14 +28,17 @@ import java.util.Set;
 public class SeasonService {
     SeasonRepository seasonRepository;
     SeasonMapper seasonMapper;
-    SeriesService seriesService;
     SeriesRepository seriesRepository;
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public SeasonResponse createSeason(SeasonRequest request) {
+    public SeasonResponse createSeason(SeasonCreationRequest request) {
         Series series = seriesRepository.findById(request.getSeriesId())
-                .orElseThrow(() -> new AppException(ErrorCodes.SERIES_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCodes.SERIES_NOT_EXISTED));
+
+        if (seasonRepository.findBySeriesIdAndSeasonNumber(series.getId(), request.getSeasonNumber()).isPresent()) {
+            throw new AppException(ErrorCodes.SEASON_EXISTED);
+        }
 
         Season season = seasonMapper.toSeason(request);
         season.setSeries(series);
@@ -49,13 +50,13 @@ public class SeasonService {
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public SeasonResponse updateSeason(String seasonId, SeasonRequest request) {
-        Season existingSeason = seasonRepository.findById(seasonId)
-                .orElseThrow(() -> new AppException(ErrorCodes.SEASON_ALREADY_EXISTS));
+    public SeasonResponse updateSeason(String seasonId, SeasonUpdateRequest request) {
+        Season season = seasonRepository.findById(seasonId)
+                .orElseThrow(() -> new AppException(ErrorCodes.SEASON_NOT_EXISTED));
 
-        seasonMapper.updateSeason(request, existingSeason);
+        seasonMapper.updateSeason(request, season);
 
-        Season updatedSeason = seasonRepository.save(existingSeason);
+        Season updatedSeason = seasonRepository.save(season);
 
         return seasonMapper.toSeasonResponse(updatedSeason);
 
@@ -72,15 +73,27 @@ public class SeasonService {
     @Transactional(readOnly = true)
     public SeasonResponse getSeasonById(String seasonId) {
         return seasonMapper.toSeasonResponse(seasonRepository.findById(seasonId)
-                .orElseThrow(() -> new AppException(ErrorCodes.SERIES_NOT_EXISTED)));
+                .orElseThrow(() -> new AppException(ErrorCodes.SEASON_NOT_EXISTED)));
     }
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteSeason(String seasonId) {
         if (!seasonRepository.existsById(seasonId)) {
-            throw new AppException(ErrorCodes.SEASON_NOT_FOUND);
+            throw new AppException(ErrorCodes.SEASON_NOT_EXISTED);
         }
         seasonRepository.deleteById(seasonId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SeasonResponse> getSeasonsBySeriesId(String seriesId) {
+        if (!seriesRepository.existsById(seriesId)) {
+            throw new AppException(ErrorCodes.SERIES_NOT_EXISTED);
+        }
+
+        List<Season> seasons = seasonRepository.findBySeriesIdOrderBySeasonNumber(seriesId);
+        return seasons.stream()
+                .map(seasonMapper::toSeasonResponse)
+                .collect(Collectors.toList());
     }
 }

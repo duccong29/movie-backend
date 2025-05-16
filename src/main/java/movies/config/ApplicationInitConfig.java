@@ -6,8 +6,10 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import movies.constant.PredefinedRole;
+import movies.entity.Genre;
 import movies.entity.Role;
 import movies.entity.User;
+import movies.repository.GenreRepository;
 import movies.repository.RoleRepository;
 import movies.repository.UserRepository;
 import org.springframework.boot.ApplicationRunner;
@@ -16,8 +18,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.HashSet;
 
 @Configuration
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ public class ApplicationInitConfig {
     PasswordEncoder passwordEncoder;
     UserRepository userRepository;
     RoleRepository roleRepository;
+    GenreRepository genreRepository;
 
     @NonFinal
     static final String ADMIN_USER_EMAIL = "admin@gmail.com";
@@ -57,12 +61,14 @@ public class ApplicationInitConfig {
                         .password(passwordEncoder.encode(ADMIN_PASSWORD))
                         .roles(adminRoles)
                         .enabled(true)
-//                        .status(PredefinedStatus.USER_ACTIVE)
                         .build();
 
                 userRepository.save(adminUser);
                 log.warn("Admin user created with default password: admin, please change it");
             }
+
+            createDefaultGenres();
+
             log.info("Application initialization completed");
         };
     }
@@ -73,5 +79,19 @@ public class ApplicationInitConfig {
                     log.info("Creating new role: {}", roleName);
                     return roleRepository.save(Role.builder().name(roleName).build());
                 });
+    }
+
+    private void createDefaultGenres() {
+        List<String> defaultGenres = List.of(
+                "Lãng Mạn", "Hành Động", "Khoa Học", "Kinh Dị", "Bí Ẩn",
+                "Chiếu Rạp", "Hoạt Hình", "Hoàng Cung"
+        );
+
+        defaultGenres.forEach(name -> {
+            genreRepository.findByName(name).orElseGet(() -> {
+                log.info("Creating genre: {}", name);
+                return genreRepository.save(Genre.builder().name(name).build());
+            });
+        });
     }
 }

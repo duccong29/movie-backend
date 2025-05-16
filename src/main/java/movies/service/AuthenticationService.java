@@ -11,11 +11,13 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import movies.constant.PredefinedRole;
-import movies.dto.request.*;
-import movies.dto.response.AuthenticationResponse;
-import movies.dto.response.IntrospectResponse;
-import movies.dto.response.ResetPasswordResponse;
-import movies.dto.response.UserConfirmResponse;
+import movies.constant.PredefinedToken;
+import movies.dto.request.authen.*;
+import movies.dto.request.user.ResetPasswordRequest;
+import movies.dto.response.authen.AuthenticationResponse;
+import movies.dto.response.authen.IntrospectResponse;
+import movies.dto.response.user.UserConfirmResponse;
+import movies.dto.response.user.ResetPasswordResponse;
 import movies.entity.InvalidatedToken;
 import movies.entity.Role;
 import movies.entity.User;
@@ -143,13 +145,11 @@ public class AuthenticationService {
             return AuthenticationResponse.builder().token(token).build();
 
         } catch (AppException e) {
-            // Nếu là lỗi của mình chủ động throw, log code + message
             log.warn("Authentication failed - Code: {}, Message: {}", e.getErrorCodes(), e.getMessage());
-            throw e; // re-throw lại để controller xử lý tiếp
+            throw e;
         } catch (Exception e) {
-            // Bắt bất kỳ lỗi nào khác (NPE, encode lỗi, ...)
             log.error("Unexpected error during authentication", e);
-            throw new AppException(ErrorCodes.UNCATEGORIZED_EXCEPTION); // tuỳ bạn define mã này
+            throw new AppException(ErrorCodes.UNCATEGORIZED_EXCEPTION);
         }
     }
 
@@ -191,88 +191,6 @@ public class AuthenticationService {
         return AuthenticationResponse.builder().token(token).build();
     }
 
-    private String generateTokenUser(String subject, String issuer, String type) {
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
-
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject(subject)
-                .issuer(issuer)
-                .issueTime(new Date())
-                .expirationTime(new Date(Instant.now().plus(VALID_DURATION, ChronoUnit.MINUTES).toEpochMilli()))
-                .jwtID(UUID.randomUUID().toString())
-                .claim("type", type)
-                .build();
-
-        try {
-            JWSObject jwsObject = new JWSObject(header, new Payload(claims.toJSONObject()));
-            jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes()));
-            return jwsObject.serialize();
-        } catch (JOSEException e) {
-            log.error("Cannot create token", e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    public UserConfirmResponse activateAccount(String token) {
-        validateToken(token, "activation");
-        try {
-            SignedJWT signedJWT = SignedJWT.parse(token);
-            String email = signedJWT.getJWTClaimsSet().getSubject();
-
-            var user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_EXISTED));
-
-            if (user.isEnabled()) {
-                return UserConfirmResponse.builder()
-                        .status(false)
-                        .message("Account already activated.")
-                        .expiresAt(null)
-                        .build();
-            }
-
-            user.setEnabled(true);
-            userRepository.save(user);
-
-            return UserConfirmResponse.builder()
-                    .status(true)
-                    .message("Account activated successfully.")
-                    .expiresAt(signedJWT.getJWTClaimsSet().getExpirationTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
-                    .build();
-
-        } catch (ParseException e) {
-            log.error("Invalid token format", e);
-            throw new AppException(ErrorCodes.INVALID_TOKEN);
-        } catch (AppException e) {
-            log.error("Activation failed", e);
-            throw new AppException(ErrorCodes.INVALID_TOKEN);
-        }
-    }
-
-
-    public ResetPasswordResponse resetPassword(String token, String newPassword) {
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        validateToken(token, "reset-password");
-        try {
-            SignedJWT signedJWT = SignedJWT.parse(token);
-            String email = signedJWT.getJWTClaimsSet().getSubject();
-
-            var user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_EXISTED));
-
-            user.setPassword(passwordEncoder.encode(newPassword));
-            userRepository.save(user);
-
-            return ResetPasswordResponse.builder()
-                    .status(true)
-                    .message("Password reset successfully.")
-                    .expiresAt(signedJWT.getJWTClaimsSet().getExpirationTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
-                    .build();
-        } catch (Exception e) {
-            log.error("Password reset failed", e);
-            throw new AppException(ErrorCodes.INVALID_TOKEN);
-        }
-    }
-
     //login
     public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
@@ -297,6 +215,99 @@ public class AuthenticationService {
         } catch (JOSEException e) {
             log.error("Cannot create token", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    //register, forgot-password
+    public String generateEmailToken(User user, String tokenType) {
+        JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
+
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject(user.getEmail())
+                .issuer("movie-app")
+                .issueTime(new Date())
+                .expirationTime(new Date(
+                        Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS).toEpochMilli()))
+                .jwtID(UUID.randomUUID().toString())
+                .claim("type", tokenType)
+                .build();
+
+        Payload payload = new Payload(claims.toJSONObject());
+
+        JWSObject jwsObject = new JWSObject(header, payload);
+        try {
+            jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes()));
+            return jwsObject.serialize();
+        } catch (JOSEException e) {
+            log.error("Cannot create verification token", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public UserConfirmResponse verifyEmailToken(String token) {
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            boolean valid = signedJWT.verify(new MACVerifier(SIGNER_KEY.getBytes()));
+
+            if (!valid) throw new AppException(ErrorCodes.UNAUTHENTICATED);
+
+            String type = signedJWT.getJWTClaimsSet().getStringClaim("type");
+            String email = signedJWT.getJWTClaimsSet().getSubject();
+            Date expiryDate = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_EXISTED));
+
+            if (type.equals(PredefinedToken.VERIFICATION_TOKEN)) {
+                return handleVerificationToken(user, expiryDate);
+            } else if (type.equals(PredefinedToken.PASSWORD_RESET_TOKEN)) {
+                return handlePasswordResetToken(user, expiryDate);
+            }
+            throw new AppException(ErrorCodes.INVALID_TOKEN);
+
+        } catch (Exception e) {
+            return UserConfirmResponse.builder()
+                    .status(false)
+                    .message("Token không hợp lệ hoặc đã hết hạn!")
+                    .expiresAt(null)
+                    .build();
+        }
+    }
+
+    public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(request.getToken());
+            boolean valid = signedJWT.verify(new MACVerifier(SIGNER_KEY.getBytes()));
+
+            if (!valid) throw new AppException(ErrorCodes.UNAUTHENTICATED);
+
+            String type = signedJWT.getJWTClaimsSet().getStringClaim("type");
+            if (!type.equals(PredefinedToken.PASSWORD_RESET_TOKEN)) {
+                throw new AppException(ErrorCodes.INVALID_TOKEN);
+            }
+
+            String email = signedJWT.getJWTClaimsSet().getSubject();
+            Date expiryDate = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+            if (expiryDate.before(new Date())) {
+                throw new AppException(ErrorCodes.INVALID_TOKEN);
+            }
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_EXISTED));
+
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+
+            return ResetPasswordResponse.builder()
+                    .status(true)
+                    .message("Đặt lại mật khẩu thành công!")
+                    .expiresAt(expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
+                    .build();
+
+        } catch (Exception e) {
+            throw new AppException(ErrorCodes.INVALID_TOKEN);
         }
     }
 
@@ -334,38 +345,31 @@ public class AuthenticationService {
         return stringJoiner.toString();
     }
 
-    public void validateToken(String token, String expectedType) {
-        try {
-            SignedJWT signedJWT = verifyToken(token, false);
-            JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
-            if (!signedJWT.verify(verifier)) {
-                throw new AppException(ErrorCodes.INVALID_TOKEN);
-            }
-            JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
-            if (new Date().after(claims.getExpirationTime())) {
-                throw new AppException(ErrorCodes.EXPIRED_RESET_TOKEN);
-            }
-            String type = claims.getStringClaim("type");
-            if (!expectedType.equals(type)) {
-                throw new AppException(ErrorCodes.INVALID_TOKEN);
-            }
-
-            if (invalidatedTokenRepository.existsById(claims.getJWTID())) {
-                throw new AppException(ErrorCodes.UNAUTHENTICATED);
-            }
-        } catch (Exception e) {
-            log.error("Token validation failed", e);
-            throw new AppException(ErrorCodes.INVALID_TOKEN);
+    private UserConfirmResponse handleVerificationToken(User user, Date expiryDate) {
+        if (user.isEnabled()) {
+            return UserConfirmResponse.builder()
+                    .status(false)
+                    .message("Account already activated.")
+                    .build();
         }
+
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        return UserConfirmResponse.builder()
+                .status(true)
+                .message("Xác thực email thành công!")
+                .expiresAt(expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
+                .build();
     }
 
-//    public String generateActivationToken(User user) {
-//        return generateTokenUser(user.getEmail(), "signup", "activation");
-//    }
-//
-//    public String generateResetPasswordToken(User user) {
-//        return generateTokenUser(user.getEmail(), "forgot-password", "reset-password");
-//    }
+    private UserConfirmResponse handlePasswordResetToken(User user, Date expiryDate) {
+        return UserConfirmResponse.builder()
+                .status(true)
+                .message("Token hợp lệ. Hãy đặt lại mật khẩu.")
+                .expiresAt(expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
+                .build();
+    }
 
     public String getCurrentUserId() {
         Authentication authentication = getAuthentication();
