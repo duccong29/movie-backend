@@ -7,8 +7,8 @@ spring:
   datasource:
     url: "jdbc:mysql://localhost:3306/movies"
     driverClassName: "com.mysql.cj.jdbc.Driver"
-    username: root
-    password: 123
+    username: 
+    password: 
 
   jpa:
     hibernate:
@@ -35,12 +35,12 @@ spring:
     allowed-formats: jpg,jpeg,png,webp
 
   cloudinary:
-    cloud_name: "dgvylsy5z"
-    api_key: "635935476999317"
-    api_secret: "PX6X7nvRO7tQjA2i4FXbPYmkXgM"
+    cloud_name: ""
+    api_key: ""
+    api_secret: ""
 
   jwt:
-    signerKey: "huVDmdfmV0UcHOvREnyywZdtALSjCfpeKGj+ig1ayuCFtenw9wex46hNiQHpO+rt"
+    signerKey: ""
     valid-duration: 86400 # in second
     refreshable-duration: 36000 # in seconds
 
@@ -70,8 +70,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: duccongsos@gmail.com
-    password: ofwc jrbf urip ufkx
+    username: 
+    password: 
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
