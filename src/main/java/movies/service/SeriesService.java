@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import movies.constant.PredefinedImages;
 import movies.dto.request.series.SeriesRequest;
 import movies.dto.response.PageResponse;
 import movies.dto.response.series.SeriesResponse;
@@ -18,7 +19,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
@@ -31,11 +34,11 @@ public class SeriesService {
     SeriesRepository seriesRepository;
     SeriesMapper seriesMapper;
     GenreService genreService;
-
+    ImageService imageService;
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public SeriesResponse createSeries(SeriesRequest request) {
+    public SeriesResponse createSeries(SeriesRequest request, List<MultipartFile> files) throws IOException {
         if (seriesRepository.existsByTitleIgnoreCase(request.getTitle())) {
             throw new AppException(ErrorCodes.SERIES_EXISTED);
         }
@@ -49,7 +52,13 @@ public class SeriesService {
 
         Series savesSeries = seriesRepository.save(series);
 
-        return seriesMapper.toSeriesResponse(savesSeries);
+        if (files != null && !files.isEmpty()) {
+            imageService.uploadImages(files, series.getId(), PredefinedImages.SERIES_ENTITY_TYPE);
+        }
+
+        SeriesResponse response = seriesMapper.toSeriesResponse(savesSeries);
+        log.info("Created series successfully: {}", response);
+        return response;
     }
 
     @Transactional
@@ -68,7 +77,6 @@ public class SeriesService {
             Set<Genre> genres = genreService.validateAndGetGenres(request.getGenreIds());
             series.setGenres(genres);
         }
-
 
 
         Series savesSeries = seriesRepository.save(series);

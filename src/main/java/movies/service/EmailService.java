@@ -48,7 +48,7 @@ public class EmailService {
 
         if (PredefinedToken.VERIFICATION_TOKEN.equals(tokenType)) {
             subject = "Xác nhận email của bạn";
-            actionUrl = "http://localhost:3000/confirm-email?token=" + token;
+            actionUrl = "http://localhost:3000/verify-email?token=" + token;
         } else if (PredefinedToken.PASSWORD_RESET_TOKEN.equals(tokenType)) {
             subject = "Đặt lại mật khẩu";
             actionUrl = "http://localhost:3000/reset-password?token=" + token;

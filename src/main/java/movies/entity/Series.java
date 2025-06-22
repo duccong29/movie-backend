@@ -28,7 +28,6 @@ public class Series {
 
     String title;
     String description;
-    String posterUrl;
     String country;
 
     @Builder.Default
@@ -37,9 +36,12 @@ public class Series {
     @ManyToMany
     Set<Genre> genres = new HashSet<>();
 
-//    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @Builder.Default
-//    List<Image> images = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    User user;
+
+    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    List<Image> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Season> seasons = new ArrayList<>();

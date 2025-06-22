@@ -40,6 +40,8 @@ public class Image {
 
     @ManyToOne(fetch = FetchType.LAZY)
     Movie movie;
+    @ManyToOne(fetch = FetchType.LAZY)
+    Series series;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

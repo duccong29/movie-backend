@@ -25,7 +25,6 @@ import java.text.ParseException;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationController {
     AuthenticationService authenticationService;
-    UserService userService;
 
     @PostMapping("/outbound/authentication")
     ApiResponse<AuthenticationResponse> outboundAuthenticate(@RequestParam("code") String code) {

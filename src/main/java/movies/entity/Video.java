@@ -23,7 +23,6 @@ public class Video {
     String id;
     String filePath;
     String hlsPath;
-//    String status;
 
     String fileName;
     String originalFileName;
@@ -35,8 +34,6 @@ public class Video {
     Boolean isStoredLocally;
     Boolean isStoredInCloudinary;
 
-    //    @ManyToOne(fetch = FetchType.LAZY)
-//    Movie movie;
     @OneToOne
     Movie movie;
 
@@ -46,6 +43,4 @@ public class Video {
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-
 }

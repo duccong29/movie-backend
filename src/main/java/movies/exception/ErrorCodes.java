@@ -22,6 +22,8 @@ public enum ErrorCodes {
     SERIES_EXISTED(2005, "Series existed", HttpStatus.BAD_REQUEST),
     SEASON_EXISTED(2006, "Season existed", HttpStatus.BAD_REQUEST),
     EPISODE_EXISTED(2007, "Episode existed", HttpStatus.BAD_REQUEST),
+    COMMENT_EXISTED(2008, "Comment existed", HttpStatus.BAD_REQUEST),
+    WATCH_HISTORY_EXISTED(2009, "Watch history existed", HttpStatus.BAD_REQUEST),
 
     USER_NOT_EXISTED(2100, "User not existed", HttpStatus.NOT_FOUND),
     EMAIL_NOT_EXISTED(2101, "Email not existed", HttpStatus.NOT_FOUND),
@@ -32,6 +34,8 @@ public enum ErrorCodes {
     SEASON_NOT_EXISTED(2106, "Season not existed", HttpStatus.NOT_FOUND),
     EPISODE_NOT_EXISTED(2107, "Episode not existed", HttpStatus.NOT_FOUND),
     IMAGE_NOT_EXISTED(2108, "images not existed", HttpStatus.NOT_FOUND),
+    COMMENT_NOT_EXISTED(2109, "Comment not existed", HttpStatus.BAD_REQUEST),
+    WATCH_HISTORY_NOT_EXISTED(2110, "Watch history not existed", HttpStatus.BAD_REQUEST),
 
     // ===== Auth & Token =====
     INVALID_KEY(3000, "Invalid key", HttpStatus.BAD_REQUEST),

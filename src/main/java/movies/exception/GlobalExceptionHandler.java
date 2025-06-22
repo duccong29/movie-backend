@@ -14,7 +14,7 @@ import java.util.Objects;
 @ControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex){
+    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
 
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .code(ErrorCodes.UNCATEGORIZED_EXCEPTION.getCode())
@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public  ResponseEntity<ApiResponse<Void>> handlingValidation(MethodArgumentNotValidException ex){
+    public ResponseEntity<ApiResponse<Void>> handlingValidation(MethodArgumentNotValidException ex) {
         String enumKey = Objects.requireNonNull(ex.getFieldError()).getDefaultMessage();
         ErrorCodes errorCodes = ErrorCodes.valueOf(enumKey);
         ApiResponse<Void> response = ApiResponse.<Void>builder()
@@ -44,7 +44,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, errorCodes.getStatusCode());
     }
 
-//    @ExceptionHandler(EntityNotFoundException.class)
+    //    @ExceptionHandler(EntityNotFoundException.class)
 //    public ResponseEntity<ApiResponse<Void>> handleEntityNotFoundException(EntityNotFoundException ex) {
 //        ApiResponse<Void> response = ApiResponse.<Void>builder()
 //                .code(ErrorCodes.ENTITY_NOT_FOUND.getCode())
@@ -62,14 +62,15 @@ public class GlobalExceptionHandler {
 //        return new ResponseEntity<>(response, ErrorCodes.IO_EXCEPTION.getStatusCode());
 //    }
 //
-//    @ExceptionHandler(value = AccessDeniedException.class)
-//    ResponseEntity<ApiResponse<Void>> handlingAccessDeniedException(AccessDeniedException exception) {
-//        ErrorCodes errorCode = ErrorCodes.UNAUTHORIZED;
-//
-//        return ResponseEntity.status(errorCode.getStatusCode())
-//                .body(ApiResponse.<Void>builder()
-//                        .code(errorCode.getCode())
-//                        .message(errorCode.getMessage())
-//                        .build());
-//    }
+    @ExceptionHandler(value = AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handlingAccessDeniedException(AccessDeniedException ex) {
+        ErrorCodes errorCodes = ErrorCodes.UNAUTHORIZED;
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .code(errorCodes.getCode())
+                .message(errorCodes.getMessage())
+                .build();
+
+        return new ResponseEntity<>(response, errorCodes.getStatusCode());
+    }
 }

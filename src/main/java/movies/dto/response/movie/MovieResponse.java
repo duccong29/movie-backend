@@ -7,6 +7,7 @@ import movies.dto.response.image.ImageResponse;
 import movies.dto.response.genre.GenreNamesResponse;
 import movies.dto.response.video.VideoResponse;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.Set;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 //@JsonInclude(JsonInclude.Include.NON_NULL)
-public class MovieResponse {
+public class MovieResponse implements Serializable {
     String id;
     String title;
     String description;

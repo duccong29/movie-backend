@@ -18,7 +18,6 @@ public class SeriesRequest {
     @Size(max = 255, message = "TITLE_INVALID")
     String title;
     String description;
-    String posterUrl;
     String country;
 
     Set<String> genreIds;

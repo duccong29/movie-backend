@@ -12,8 +12,11 @@ import movies.dto.response.series.SeriesResponse;
 import movies.service.SeriesService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -24,10 +27,12 @@ import java.util.List;
 public class SeriesController {
     SeriesService seriesService;
 
-    @PostMapping
-    ApiResponse<SeriesResponse> createSeries(@Valid @RequestBody SeriesRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ApiResponse<SeriesResponse> createSeries(
+            @Valid @ModelAttribute SeriesRequest request,
+            @RequestPart(value = "imageFile", required = false) List<MultipartFile> imageFile) throws IOException {
         return ApiResponse.<SeriesResponse>builder()
-                .data(seriesService.createSeries(request))
+                .data(seriesService.createSeries(request,imageFile))
                 .build();
     }
 

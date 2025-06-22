@@ -25,19 +25,19 @@ import java.net.URI;
 public class VideoController {
     VideoService videoService;
 
-    @PostMapping("/upload/{movieId}")
-    public ResponseEntity<VideoResponse> uploadVideo(
-            @PathVariable String movieId,
-            @RequestParam("file") MultipartFile file) {
-
-        try {
-            VideoResponse videoResponse = videoService.uploadVideo(file, movieId);
-            return ResponseEntity.ok(videoResponse);
-        } catch (Exception e) {
-            log.error("Error uploading video for movie {}: {}", movieId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
+//    @PostMapping("/upload/{movieId}")
+//    public ResponseEntity<VideoResponse> uploadVideo(
+//            @PathVariable String movieId,
+//            @RequestParam("file") MultipartFile file) {
+//
+//        try {
+//            VideoResponse videoResponse = videoService.uploadVideo(file, movieId);
+//            return ResponseEntity.ok(videoResponse);
+//        } catch (Exception e) {
+//            log.error("Error uploading video for movie {}: {}", movieId, e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+//        }
+//    }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VideoResponse> uploadVideo(

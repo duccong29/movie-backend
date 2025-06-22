@@ -21,6 +21,13 @@ spring:
       max-file-size: 1000MB
       max-request-size: 1000MB
 
+  logging:
+    level:
+      movies: DEBUG
+      org.springframework.messaging: DEBUG
+      org.springframework.web.socket: DEBUG
+      org.springframework.data.redis: DEBUG
+
   files:
     video: videos/
 
@@ -53,13 +60,9 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
-        max.partition.fetch.bytes: 1073741824  # 1 GB
-        fetch.max.bytes: 1073741824         # 1 GB
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        max.request.size: 1073741824          # 1 GB
 
   outbound:
     identity:
@@ -80,3 +83,9 @@ spring:
   elasticsearch:
     enabled: false
     uris: http://localhost:9200
+
+  redis:
+    host: localhost
+    port: 6379
+    password: redis123
+

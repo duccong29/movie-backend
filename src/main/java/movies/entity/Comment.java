@@ -29,6 +29,10 @@ public class Comment {
     String text;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    Comment parentComment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     User user;
 
     @ManyToOne(fetch = FetchType.LAZY)

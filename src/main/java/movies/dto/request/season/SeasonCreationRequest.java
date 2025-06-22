@@ -18,5 +18,5 @@ public class SeasonCreationRequest {
     @NotNull(message = "SERIES_REQUIRED")
     String seriesId;
     String title;
-    String posterUrl;
+
 }

@@ -3,6 +3,7 @@ package movies.dto.response.episode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import movies.dto.response.video.VideoPathResponse;
+import movies.dto.response.video.VideoResponse;
 
 import java.util.List;
 
@@ -19,5 +20,5 @@ public class EpisodeResponse {
     Integer durationMinutes;
     String seasonId;
 
-    List<VideoPathResponse> videoPaths;
+    List<VideoResponse> video;
 }

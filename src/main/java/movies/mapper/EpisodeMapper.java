@@ -12,7 +12,7 @@ public interface EpisodeMapper {
 
     Episode toEpisode(EpisodeRequest request);
 
-    @Mapping(source = "videos", target = "videoPaths")
+    @Mapping(source = "videos", target = "video")
     @Mapping(source = "season.id", target = "seasonId")
     EpisodeResponse toEpisodeResponse(Episode episode);
 

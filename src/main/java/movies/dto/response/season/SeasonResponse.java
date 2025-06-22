@@ -18,7 +18,6 @@ public class SeasonResponse {
     String id;
     Integer seasonNumber;
     String title;
-    String posterUrl;
     SeriesNameResponse series;
     List<EpisodeResponse> episodes;
     LocalDateTime createdAt;

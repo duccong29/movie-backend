@@ -26,7 +26,6 @@ public class Season {
 
     Integer seasonNumber;
     String title;
-    String posterUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     Series series;

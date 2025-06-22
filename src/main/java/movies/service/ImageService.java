@@ -20,6 +20,7 @@ import movies.exception.ErrorCodes;
 import movies.mapper.ImageMapper;
 import movies.repository.ImageRepository;
 import movies.repository.MovieRepository;
+import movies.repository.SeriesRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,15 +49,59 @@ public class ImageService {
     ImageMapper imageMapper;
     StorageProperties storageProperties;
     MovieRepository movieRepository;
+    SeriesRepository seriesRepository;
 
 
-
+    //    @Transactional
+//    public List<ImageResponse> uploadImages(List<MultipartFile> files, String movieId) throws IOException {
+//        validateImage(files);
+//
+//        Movie movie = movieRepository.findById(movieId)
+//                .orElseThrow(() -> new AppException(ErrorCodes.MOVIE_NOT_EXISTED));
+//
+//        List<Image> savedImages = new ArrayList<>();
+//
+//        for (MultipartFile file : files) {
+//            String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+//            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+//            String uniqueFilename = UUID.randomUUID() + extension;
+//            String detectedType = detectImageType(originalFilename);
+//            Image image = Image.builder()
+//                    .fileName(uniqueFilename)
+//                    .originalFileName(originalFilename)
+//                    .fileType(file.getContentType())
+//                    .imageType(detectedType)
+//                    .fileSize(file.getSize())
+//                    .movie(movie)
+//                    .isStoredLocally(false)
+//                    .isStoredInCloudinary(false)
+//                    .build();
+//
+//            try {
+//                uploadToCloudinary(file, image);
+//            } catch (Exception e) {
+//                log.error("Failed to upload image to Cloudinary, falling back to local storage", e);
+//                uploadLocally(file, image);
+//            }
+//
+//            if (!image.getIsStoredLocally() && !image.getIsStoredInCloudinary()) {
+//                throw new AppException(ErrorCodes.IMAGE_PROCESSING_FAILED);
+//            }
+//
+//            Image savedImage = imageRepository.save(image);
+//            savedImages.add(savedImage);
+//        }
+//
+//        movie.getImages().addAll(savedImages);
+//        movieRepository.save(movie);
+//
+//        return savedImages.stream()
+//                .map(imageMapper::toImageResponse)
+//                .collect(Collectors.toList());
+//    }
     @Transactional
-    public List<ImageResponse> uploadImages(List<MultipartFile> files, String movieId) throws IOException {
+    public List<ImageResponse> uploadImages(List<MultipartFile> files, String entityId, String entityType) throws IOException {
         validateImage(files);
-
-        Movie movie = movieRepository.findById(movieId)
-                .orElseThrow(() -> new AppException(ErrorCodes.MOVIE_NOT_EXISTED));
 
         List<Image> savedImages = new ArrayList<>();
 
@@ -65,16 +110,32 @@ public class ImageService {
             String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             String uniqueFilename = UUID.randomUUID() + extension;
             String detectedType = detectImageType(originalFilename);
+
             Image image = Image.builder()
                     .fileName(uniqueFilename)
                     .originalFileName(originalFilename)
                     .fileType(file.getContentType())
                     .imageType(detectedType)
                     .fileSize(file.getSize())
-                    .movie(movie)
                     .isStoredLocally(false)
                     .isStoredInCloudinary(false)
                     .build();
+
+            // Gán entity tương ứng
+            switch (entityType) {
+                case PredefinedImages.MOVIE_ENTITY_TYPE -> {
+                    Movie movie = movieRepository.findById(entityId)
+                            .orElseThrow(() -> new AppException(ErrorCodes.MOVIE_NOT_EXISTED));
+                    image.setMovie(movie);
+                }
+                case PredefinedImages.SERIES_ENTITY_TYPE -> {
+                    Series series = seriesRepository.findById(entityId)
+                            .orElseThrow(() -> new AppException(ErrorCodes.SERIES_NOT_EXISTED));
+                    image.setSeries(series);
+                }
+                // Thêm case khác nếu cần, ví dụ EPISODE, USER,...
+                default -> throw new IllegalArgumentException("Unsupported entityType: " + entityType);
+            }
 
             try {
                 uploadToCloudinary(file, image);
@@ -87,12 +148,8 @@ public class ImageService {
                 throw new AppException(ErrorCodes.IMAGE_PROCESSING_FAILED);
             }
 
-            Image savedImage = imageRepository.save(image);
-            savedImages.add(savedImage);
+            savedImages.add(imageRepository.save(image));
         }
-
-        movie.getImages().addAll(savedImages);
-        movieRepository.save(movie);
 
         return savedImages.stream()
                 .map(imageMapper::toImageResponse)

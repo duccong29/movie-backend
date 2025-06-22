@@ -31,11 +31,8 @@ public class Episode {
     @ManyToOne(fetch = FetchType.LAZY)
     Season season;
 
-//    @OneToMany(mappedBy = "episode", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @Builder.Default
-//    List<Image> images = new ArrayList<>();
-
     @OneToMany(mappedBy = "episode", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     List<Video> videos = new ArrayList<>();
 
     @OneToMany(mappedBy = "episode", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -48,4 +45,5 @@ public class Episode {
     @LastModifiedDate
     @Column(nullable = false)
     LocalDateTime updatedAt;
+
 }

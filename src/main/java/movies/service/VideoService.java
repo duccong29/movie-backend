@@ -11,6 +11,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import movies.config.StorageProperties;
+import movies.constant.PredefinedImages;
 import movies.constant.PredefinedVideos;
 import movies.dto.request.video.VideoRequest;
 import movies.dto.response.video.VideoResponse;
@@ -81,45 +82,109 @@ public class VideoService {
         }
     }
 
-    @Transactional
-    public VideoResponse uploadVideo(MultipartFile file, String movieId) throws IOException {
-        validateVideo(file);
+//    @Transactional
+//    public VideoResponse uploadVideo(MultipartFile file, String movieId) throws IOException {
+//        validateVideo(file);
+//
+//        Movie movie = movieRepository.findById(movieId)
+//                .orElseThrow(() -> new AppException(ErrorCodes.MOVIE_NOT_EXISTED));
+//
+//        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+//        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+//        String uniqueFilename = UUID.randomUUID() + extension;
+//
+//        Video video = Video.builder()
+//                .fileName(uniqueFilename)
+//                .originalFileName(originalFilename)
+//                .fileType(file.getContentType())
+//                .fileSize(file.getSize())
+//                .movie(movie) // Set quan hệ trực tiếp
+//                .isStoredLocally(false)
+//                .isStoredInCloudinary(false)
+//                .build();
+//
+//        try {
+//            uploadToCloudinary(file, video);
+//        } catch (Exception e) {
+//            log.error("Failed to upload video to Cloudinary, falling back to local storage", e);
+//            uploadLocally(file, video);
+//        }
+//
+//        if (!video.getIsStoredLocally() && !video.getIsStoredInCloudinary()) {
+//            throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
+//        }
+//
+//        Video savedVideo = videoRepository.save(video);
+//        movie.setVideo(savedVideo);
+//
+//        movieRepository.save(movie);
+//
+//        return videoMapper.toVideoResponse(savedVideo);
+//    }
+@Transactional
+public VideoResponse uploadVideo(MultipartFile file, String entityId, String entityType) throws IOException {
+    validateVideo(file);
 
-        Movie movie = movieRepository.findById(movieId)
-                .orElseThrow(() -> new AppException(ErrorCodes.MOVIE_NOT_EXISTED));
+    String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+    String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+    String uniqueFilename = UUID.randomUUID() + extension;
 
-        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        String uniqueFilename = UUID.randomUUID() + extension;
+    Video video = Video.builder()
+            .fileName(uniqueFilename)
+            .originalFileName(originalFilename)
+            .fileType(file.getContentType())
+            .fileSize(file.getSize())
+            .isStoredLocally(false)
+            .isStoredInCloudinary(false)
+            .build();
 
-        Video video = Video.builder()
-                .fileName(uniqueFilename)
-                .originalFileName(originalFilename)
-                .fileType(file.getContentType())
-                .fileSize(file.getSize())
-                .movie(movie) // Set quan hệ trực tiếp
-                .isStoredLocally(false)
-                .isStoredInCloudinary(false)
-                .build();
-
-        try {
-            uploadToCloudinary(file, video);
-        } catch (Exception e) {
-            log.error("Failed to upload video to Cloudinary, falling back to local storage", e);
-            uploadLocally(file, video);
+    // Gắn entity tương ứng
+    switch (entityType) {
+        case PredefinedImages.MOVIE_ENTITY_TYPE -> {
+            Movie movie = movieRepository.findById(entityId)
+                    .orElseThrow(() -> new AppException(ErrorCodes.MOVIE_NOT_EXISTED));
+            video.setMovie(movie);
+        }
+        case PredefinedImages.EPISODE_ENTITY_TYPE -> {
+            Episode episode = episodeRepository.findById(entityId)
+                    .orElseThrow(() -> new AppException(ErrorCodes.EPISODE_NOT_EXISTED));
+            video.setEpisode(episode);
+            episode.getVideos().add(video);
         }
 
-        if (!video.getIsStoredLocally() && !video.getIsStoredInCloudinary()) {
-            throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
-        }
-
-        Video savedVideo = videoRepository.save(video);
-        movie.setVideo(savedVideo);
-
-        movieRepository.save(movie);
-
-        return videoMapper.toVideoResponse(savedVideo);
+        default -> throw new IllegalArgumentException("Unsupported entityType: " + entityType);
     }
+
+    // Upload
+    try {
+        uploadToCloudinary(file, video);
+    } catch (Exception e) {
+        log.error("Failed to upload video to Cloudinary, falling back to local storage", e);
+        uploadLocally(file, video);
+    }
+
+    if (!video.getIsStoredLocally() && !video.getIsStoredInCloudinary()) {
+        throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
+    }
+
+    Video savedVideo = videoRepository.save(video);
+
+    // Gắn video vào entity và lưu lại nếu cần
+    switch (entityType) {
+        case PredefinedImages.MOVIE_ENTITY_TYPE -> {
+            Movie movie = video.getMovie();
+            movie.setVideo(savedVideo);
+            movieRepository.save(movie);
+        }
+        case PredefinedImages.EPISODE_ENTITY_TYPE -> {
+            Episode episode = video.getEpisode();
+            episodeRepository.save(episode);
+        }
+
+    }
+
+    return videoMapper.toVideoResponse(savedVideo);
+}
 
     public void validateVideo(MultipartFile file) {
         if (file == null || file.isEmpty()) {

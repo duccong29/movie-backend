@@ -32,11 +32,13 @@ public class Movie {
     String description;
     Integer durationMinutes;
     LocalDate releaseDate;
-    String posterUrl;
     String country;
 
     @Builder.Default
     Double averageRating = 0.0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    User user;
 
     @ManyToMany
     Set<Genre> genres = new HashSet<>();

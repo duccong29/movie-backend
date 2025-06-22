@@ -160,4 +160,8 @@ public class UserService {
         });
     }
 
+    public User getUserEntityById(String id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_EXISTED));
+    }
 }

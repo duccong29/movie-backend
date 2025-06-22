@@ -26,7 +26,7 @@ public class SecurityConfig {
             "/users", "/users/forgot-password", "/users/reset-password",
             "/login", "/introspect", "/logout", "/refresh", "/outbound/authentication",};
     private final String[] MOVIES_ENDPOINTS = {
-            "/confirm/**" , "/videos_hsl/**",  "/genre/**",  "/movie/**"  , "/season/**", "/series/**", "/episode/**"
+            "/comments/**","/verify-email/**", "/confirm/**" , "/videos_hsl/**",  "/genre/**",  "/movies/**"  , "/season/**", "/series/**", "/episode/**"
     };
 
     @Autowired
@@ -35,6 +35,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(request -> request
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // <-- Thêm dòng này
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, MOVIES_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, "/movie/videos_hsl/**").permitAll()

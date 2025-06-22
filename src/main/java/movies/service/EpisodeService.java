@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import movies.constant.PredefinedImages;
 import movies.dto.request.episode.EpisodeRequest;
 import movies.dto.request.video.VideoRequest;
 import movies.dto.response.episode.EpisodeResponse;
@@ -42,16 +43,19 @@ public class EpisodeService {
             log.warn("Episode already exists with title: {} in season: {}", request.getTitle(), request.getSeasonId());
             throw new AppException(ErrorCodes.EPISODE_EXISTED);
         }
+
         Episode episode = episodeMapper.toEpisode(request);
         episode.setSeason(season);
 
         Episode savedEpisode = episodeRepository.save(episode);
 
-        try {
-            uploadEpisodeVideoIfPresent(savedEpisode.getId(), videoFile);
-        } catch (Exception e) {
-            log.error("Video upload failed for episode: {}", savedEpisode.getId(), e);
-            throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
+        if (videoFile != null && !videoFile.isEmpty()) {
+            try {
+                videoService.uploadVideo(videoFile, savedEpisode.getId(), PredefinedImages.EPISODE_ENTITY_TYPE);
+            } catch (Exception e) {
+                log.error("Video upload failed for episode: {}", savedEpisode.getId(), e);
+                throw new AppException(ErrorCodes.VIDEO_PROCESSING_ERROR);
+            }
         }
 
         return episodeMapper.toEpisodeResponse(savedEpisode);

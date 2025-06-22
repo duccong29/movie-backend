@@ -33,7 +33,7 @@ import java.util.List;
 @RestController
 @Slf4j
 @RequiredArgsConstructor
-@RequestMapping("/movie")
+@RequestMapping("/movies")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class MovieController {
     MovieService movieService;
@@ -55,7 +55,7 @@ public class MovieController {
             @PathVariable("movieId") String movieId,
             @Valid @ModelAttribute MovieRequest request,
             @RequestPart("videoFile") MultipartFile videoFile,
-            @RequestPart("imageFile") MultipartFile imageFile) throws IOException {
+            @RequestPart(value = "imageFile", required = false) List<MultipartFile> imageFile) throws IOException {
         MovieResponse movieResponse = movieService.updateMovie(movieId, request, videoFile, imageFile);
         return ApiResponse.<MovieResponse>builder()
                 .data(movieResponse)
